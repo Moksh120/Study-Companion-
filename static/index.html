@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Study Companion</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0e14;
+    --surface: #13151f;
+    --surface2: #1a1d2e;
+    --border: #252838;
+    --accent: #7c6af7;
+    --accent2: #f76a8c;
+    --accent3: #6af7c8;
+    --text: #e8e9f0;
+    --text-dim: #7b7e9a;
+    --correct: #4af798;
+    --wrong: #f76a6a;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,106,247,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,106,247,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 20px 60px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+  .header-text h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
+  }
+  .header-text p { font-size: 12px; color: var(--text-dim); font-family: 'Space Mono', monospace; }
+  .badge {
+    margin-left: auto;
+    background: linear-gradient(135deg, rgba(106,247,200,0.12), rgba(124,106,247,0.12));
+    border: 1px solid rgba(106,247,200,0.3);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent3);
+  }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 5px;
+    margin-bottom: 28px;
+  }
+  .tab {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .tab.active {
+    background: linear-gradient(135deg, var(--accent), #5c4bd4);
+    color: white;
+    box-shadow: 0 4px 20px rgba(124,106,247,0.3);
+  }
+  .tab:hover:not(.active) { color: var(--text); background: var(--surface2); }
+
+  /* ── Panels ── */
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ── Shared components ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  textarea, input[type="text"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px 16px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  textarea { resize: vertical; min-height: 160px; line-height: 1.6; }
+  textarea:focus, input[type="text"]:focus { border-color: var(--accent); }
+  textarea::placeholder, input[type="text"]::placeholder { color: var(--text-dim); }
+
+  .row { display: flex; gap: 10px; margin-bottom: 16px; }
+
+  .btn {
+    padding: 12px 22px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #5c4bd4);
+    color: white;
+    box-shadow: 0 4px 16px rgba(124,106,247,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(124,106,247,0.45); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-pink {
+    background: linear-gradient(135deg, var(--accent2), #c4365a);
+    color: white;
+    box-shadow: 0 4px 16px rgba(247,106,140,0.3);
+  }
+
+  /* ── Info bar ── */
+  .info-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(124,106,247,0.08);
+    border: 1px solid rgba(124,106,247,0.2);
+    border-radius: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+
+  /* ── Sample chips ── */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Space Mono', monospace;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Mode toggle ── */
+  .mode-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .mode-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mode-btn.active { border-color: var(--accent3); color: var(--accent3); background: rgba(106,247,200,0.08); }
+
+  /* ── Response box ── */
+  .response-box { display: none; }
+  .response-box.visible { display: block; animation: fadeIn 0.3s ease; }
+  .response-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .response-content {
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text);
+    white-space: pre-wrap;
+  }
+  .response-content strong { color: var(--accent); font-weight: 600; }
+
+  /* ── Spinner ── */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(124,106,247,0.3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Quiz ── */
+  .quiz-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .ctrl-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 14px;
+  }
+  .ctrl-group label { font-size: 12px; color: var(--text-dim); font-family: 'Space Mono', monospace; }
+  select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 4px 8px;
+    outline: none;
+  }
+
+  .quiz-q {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 14px;
+    animation: fadeIn 0.3s ease;
+  }
+  .q-meta {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--accent2);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .q-text { font-size: 15px; font-weight: 500; margin-bottom: 14px; line-height: 1.5; }
+
+  .options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .opt {
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .opt:hover:not(:disabled) { border-color: var(--accent); background: rgba(124,106,247,0.1); }
+  .opt.correct { border-color: var(--correct); background: rgba(74,247,152,0.1); color: var(--correct); }
+  .opt.wrong   { border-color: var(--wrong);   background: rgba(247,106,106,0.1); color: var(--wrong);   }
+  .opt:disabled { cursor: default; }
+
+  .short-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    margin-bottom: 8px;
+    transition: border-color 0.2s;
+  }
+  .short-input:focus { border-color: var(--accent); }
+
+  .feedback { margin-top: 10px; font-size: 13px; line-height: 1.6; }
+
+  /* ── Score board ── */
+  .scoreboard {
+    background: linear-gradient(135deg, rgba(124,106,247,0.1), rgba(247,106,140,0.1));
+    border: 1px solid rgba(124,106,247,0.3);
+    border-radius: 16px;
+    padding: 28px;
+    text-align: center;
+    margin-top: 20px;
+    display: none;
+  }
+  .scoreboard.visible { display: block; animation: fadeIn 0.4s ease; }
+  .score-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 52px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .score-sub { color: var(--text-dim); font-size: 14px; margin-top: 6px; line-height: 1.6; }
+  .score-actions { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+
+  /* ── Progress ── */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    text-align: center;
+  }
+  .stat-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .stat-lbl { font-size: 11px; color: var(--text-dim); margin-top: 4px; font-family: 'Space Mono', monospace; }
+
+  .topic-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .topic-row {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    gap: 14px;
+  }
+  .topic-row:last-child { border-bottom: none; }
+  .topic-name { flex: 1; font-size: 14px; }
+  .bar-bg { width: 120px; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .bar { height: 100%; border-radius: 3px; transition: width 1s ease; }
+  .topic-pct { font-family: 'Space Mono', monospace; font-size: 12px; width: 36px; text-align: right; }
+  .weak-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(247,106,106,0.15);
+    color: var(--wrong);
+    font-family: 'Space Mono', monospace;
+    border: 1px solid rgba(247,106,106,0.3);
+  }
+
+  .empty { text-align: center; padding: 40px 20px; color: var(--text-dim); font-size: 14px; }
+  .empty .icon { font-size: 36px; margin-bottom: 12px; }
+
+  /* ── PDF Upload ── */
+  .upload-tabs { display: flex; gap: 0; margin-bottom: 16px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+  .upload-tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: var(--surface2);
+    color: var(--text-dim);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .upload-tab.active { background: var(--surface); color: var(--text); border-bottom: 2px solid var(--accent); }
+  .upload-tab:hover:not(.active) { color: var(--text); }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    background: var(--surface2);
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(124,106,247,0.06);
+  }
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+  .drop-icon { font-size: 36px; margin-bottom: 12px; }
+  .drop-title { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+  .drop-sub { font-size: 12px; color: var(--text-dim); font-family: 'Space Mono', monospace; }
+
+  .pdf-result {
+    display: none;
+    background: rgba(106,247,200,0.07);
+    border: 1px solid rgba(106,247,200,0.25);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-top: 12px;
+    font-size: 13px;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .pdf-result.visible { display: flex; animation: fadeIn 0.3s ease; }
+  .pdf-result-icon { font-size: 24px; flex-shrink: 0; }
+  .pdf-result-info { flex: 1; }
+  .pdf-result-name { font-weight: 500; margin-bottom: 3px; }
+  .pdf-result-meta { font-size: 11px; color: var(--text-dim); font-family: 'Space Mono', monospace; }
+  .pdf-warning {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #f7a86a;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .upload-progress {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .upload-progress.visible { display: flex; }
+
+  /* ── Error toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(247,106,106,0.15);
+    border: 1px solid var(--wrong);
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-size: 13px;
+    color: var(--wrong);
+    z-index: 999;
+    display: none;
+    max-width: 90vw;
+    text-align: center;
+  }
+  .toast.show { display: block; animation: fadeIn 0.3s ease; }
+
+  @media (max-width: 600px) {
+    .options { grid-template-columns: 1fr; }
+    .stats   { grid-template-columns: 1fr 1fr; }
+    .quiz-controls { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">🧠</div>
+    <div class="header-text">
+      <h1>Study Companion</h1>
+      <p>FastAPI + Gemini · Python backend</p>
+    </div>
+    <div class="badge">Gemini 2.0 Flash</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('notes')">📝 Notes</button>
+    <button class="tab" onclick="switchTab('explain')">💡 Explain</button>
+    <button class="tab" onclick="switchTab('quiz')">🎯 Quiz</button>
+    <button class="tab" onclick="switchTab('progress')">📊 Progress</button>
+  </div>
+
+  <!-- ── NOTES ── -->
+  <div id="tab-notes" class="panel active">
+    <div class="card">
+      <!-- Sub-tabs: Type vs Upload -->
+      <div class="upload-tabs">
+        <button class="upload-tab active" id="input-tab-type"   onclick="switchInputTab('type')">✏️ Type / Paste</button>
+        <button class="upload-tab"        id="input-tab-upload" onclick="switchInputTab('upload')">📄 Upload PDF</button>
+      </div>
+
+      <!-- Type / Paste panel -->
+      <div id="input-panel-type">
+        <div class="label">📌 Your Study Notes</div>
+        <textarea id="notes-input" placeholder="Paste your notes, textbook content, or any study material here..."></textarea>
+        <div style="margin-top:12px;font-size:12px;color:var(--text-dim);">Try a sample topic:</div>
+        <div class="chips">
+          <div class="chip" onclick="loadSample('ml')">🤖 Machine Learning</div>
+          <div class="chip" onclick="loadSample('prob')">🎲 Probability</div>
+          <div class="chip" onclick="loadSample('db')">🗄️ Databases</div>
+          <div class="chip" onclick="loadSample('os')">⚙️ Operating Systems</div>
+        </div>
+      </div>
+
+      <!-- Upload PDF panel -->
+      <div id="input-panel-upload" style="display:none;">
+        <div class="label">📄 Upload Your PDF Notes</div>
+        <div class="drop-zone" id="drop-zone"
+             ondragover="handleDragOver(event)"
+             ondragleave="handleDragLeave(event)"
+             ondrop="handleDrop(event)">
+          <input type="file" accept=".pdf" id="pdf-file-input" onchange="handleFileSelect(event)">
+          <div class="drop-icon">📂</div>
+          <div class="drop-title">Drag &amp; drop your PDF here</div>
+          <div class="drop-sub">or click to browse · max 10 MB</div>
+        </div>
+
+        <!-- Upload progress -->
+        <div class="upload-progress" id="upload-progress">
+          <span class="spinner"></span>
+          <span>Extracting text from PDF...</span>
+        </div>
+
+        <!-- Success result -->
+        <div class="pdf-result" id="pdf-result">
+          <div class="pdf-result-icon">✅</div>
+          <div class="pdf-result-info">
+            <div class="pdf-result-name" id="pdf-result-name"></div>
+            <div class="pdf-result-meta" id="pdf-result-meta"></div>
+            <div class="pdf-warning" id="pdf-result-warning" style="display:none;"></div>
+          </div>
+          <button class="btn btn-outline" style="font-size:12px;padding:6px 12px;" onclick="clearPdf()">✕ Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="saveNotes()" style="width:100%;">💾 Save Notes &amp; Continue →</button>
+    <div id="notes-saved" style="display:none;text-align:center;margin-top:12px;color:var(--accent3);font-size:13px;font-family:'Space Mono',monospace;">
+      ✓ Notes saved! Switch to Explain or Quiz.
+    </div>
+  </div>
+
+  <!-- ── EXPLAIN ── -->
+  <div id="tab-explain" class="panel">
+    <div class="info-bar">ℹ️ Your saved notes are sent as context with every question.</div>
+    <div class="mode-row">
+      <button class="mode-btn active" id="mode-normal" onclick="setMode('normal')">Normal</button>
+      <button class="mode-btn" id="mode-eli5"   onclick="setMode('eli5')">ELI5 🧒</button>
+      <button class="mode-btn" id="mode-deep"   onclick="setMode('deep')">Deep Dive 🔬</button>
+    </div>
+    <div class="row">
+      <input type="text" id="explain-input" placeholder="e.g. What is gradient descent? Explain neural networks..." onkeydown="if(event.key==='Enter') askQuestion()">
+      <button class="btn btn-primary" id="explain-btn" onclick="askQuestion()">Ask →</button>
+    </div>
+    <div class="card response-box" id="explain-response">
+      <div class="response-header">⚡ <span>Gemini's Explanation</span></div>
+      <div class="response-content" id="explain-content"></div>
+    </div>
+  </div>
+
+  <!-- ── QUIZ ── -->
+  <div id="tab-quiz" class="panel">
+    <div class="info-bar">🎯 Generates questions from your saved notes.</div>
+    <div class="quiz-controls">
+      <div class="ctrl-group">
+        <label>Questions:</label>
+        <select id="q-count">
+          <option value="3">3</option>
+          <option value="5" selected>5</option>
+          <option value="8">8</option>
+        </select>
+      </div>
+      <div class="ctrl-group">
+        <label>Difficulty:</label>
+        <select id="q-diff">
+          <option value="easy">🟢 Easy</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="hard">🔴 Hard</option>
+        </select>
+      </div>
+      <button class="btn btn-pink" id="quiz-btn" onclick="generateQuiz()" style="margin-left:auto;">Generate Quiz 🎲</button>
+    </div>
+
+    <div id="quiz-loading" style="display:none;" class="empty">
+      <div class="icon">⏳</div>
+      <div>Generating your quiz with Gemini...</div>
+    </div>
+    <div id="quiz-container"></div>
+
+    <div id="scoreboard" class="scoreboard">
+      <div class="score-num" id="score-display">0/0</div>
+      <div class="score-sub"  id="score-sub"></div>
+      <div class="score-actions">
+        <button class="btn btn-primary" onclick="generateQuiz()">Try Again 🔄</button>
+        <button class="btn btn-outline" onclick="switchTab('progress')">View Progress 📊</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PROGRESS ── -->
+  <div id="tab-progress" class="panel">
+    <div class="stats">
+      <div class="stat-card"><div class="stat-val" id="s-total">0</div><div class="stat-lbl">Quizzes Taken</div></div>
+      <div class="stat-card"><div class="stat-val" id="s-acc">—</div><div class="stat-lbl">Accuracy</div></div>
+      <div class="stat-card"><div class="stat-val" id="s-topics">0</div><div class="stat-lbl">Topics Studied</div></div>
+    </div>
+    <div class="topic-list" id="topic-list">
+      <div class="empty" style="padding:30px;">
+        <div class="icon">📈</div>
+        <div>Take a quiz to see your progress here</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let notes = '';
+let mode  = 'normal';
+let quizData   = null;
+let userAnswers = {};
+let progress = { taken: 0, correct: 0, total: 0, topics: {} };
+
+// ── Samples ────────────────────────────────────────────────────────────────
+const SAMPLES = {
+  ml: `Machine Learning (ML) is a subset of artificial intelligence that gives systems the ability to automatically learn and improve from experience without being explicitly programmed.
+
+Types of Machine Learning:
+1. Supervised Learning: The model is trained on labeled data. Examples: Linear Regression, Decision Trees, Neural Networks, SVM.
+2. Unsupervised Learning: The model finds patterns in unlabeled data. Examples: K-Means Clustering, PCA, Autoencoders.
+3. Reinforcement Learning: Agent learns by interacting with environment and receiving rewards/penalties.
+
+Key Concepts:
+- Gradient Descent: Optimization algorithm that minimizes the loss function by moving in the direction of steepest descent.
+- Overfitting: When a model learns training data too well and fails to generalize to new data.
+- Bias-Variance Tradeoff: High bias = underfitting, High variance = overfitting.
+- Cross-validation: Technique to evaluate model performance by splitting data into training and validation sets.
+- Backpropagation: Algorithm for training neural networks by computing gradients layer by layer.`,
+
+  prob: `Probability and Statistics for Computer Science:
+
+Sample Space: Set of all possible outcomes of an experiment.
+Event: A subset of the sample space.
+P(A) = Favorable outcomes / Total outcomes
+
+Rules:
+- Complementary: P(A') = 1 - P(A)
+- Addition: P(A∪B) = P(A) + P(B) - P(A∩B)
+- Conditional: P(A|B) = P(A∩B) / P(B)
+- Bayes' Theorem: P(A|B) = P(B|A) × P(A) / P(B)
+
+Distributions:
+- Binomial: Number of successes in n independent Bernoulli trials.
+- Normal: Bell-shaped, symmetric. 68-95-99.7 rule.
+- Poisson: Number of events in a fixed interval.
+
+Expected Value: E(X) = Σ x·P(X=x)
+Variance: Var(X) = E(X²) - [E(X)]²`,
+
+  db: `Database Management Systems (DBMS):
+
+Relational Databases: Organized into tables with rows and columns.
+- Primary Key: Unique identifier for each row.
+- Foreign Key: References a primary key in another table.
+- Normalization: Reducing redundancy — 1NF, 2NF, 3NF, BCNF.
+
+SQL Basics:
+- SELECT * FROM students WHERE age > 18;
+- INSERT INTO students VALUES (1, 'Alice', 20);
+- UPDATE students SET age=21 WHERE id=1;
+- DELETE FROM students WHERE id=1;
+- JOIN: Combine rows — INNER, LEFT, RIGHT JOIN.
+
+ACID Properties:
+- Atomicity: Transaction is all-or-nothing.
+- Consistency: Database moves from one valid state to another.
+- Isolation: Transactions execute independently.
+- Durability: Committed transactions persist permanently.
+
+Indexing: B-tree structure that speeds up reads. Trade-off: faster reads, slower writes.`,
+
+  os: `Operating Systems — Core Concepts:
+
+Process: A program in execution with its own memory space.
+Thread: Lightweight unit within a process. Threads share memory.
+Process States: New → Ready → Running → Waiting → Terminated
+CPU Scheduling: FCFS, SJF, Round Robin, Priority Scheduling.
+
+Memory Management:
+- Virtual Memory: More memory than physically available via paging.
+- Paging: Fixed-size pages. Page Table maps virtual → physical.
+- Page Fault: Page not in RAM; OS loads it from disk.
+- Segmentation: Divides memory into logical segments.
+
+Deadlock — four conditions:
+1. Mutual Exclusion  2. Hold and Wait  3. No Preemption  4. Circular Wait
+Prevention: Eliminate one of the four conditions.
+
+File Systems: FAT, NTFS, ext4.
+Inode: Stores file metadata in Unix systems.`
+};
+
+function loadSample(key) {
+  document.getElementById('notes-input').value = SAMPLES[key];
+}
+
+function saveNotes() {
+  if (currentInputTab === 'upload') {
+    if (!pdfExtractedText) { showToast('Please upload a PDF first!'); return; }
+    notes = pdfExtractedText;
+  } else {
+    notes = document.getElementById('notes-input').value.trim();
+    if (!notes) { showToast('Please add some notes first!'); return; }
+  }
+  document.getElementById('notes-saved').style.display = 'block';
+  setTimeout(() => document.getElementById('notes-saved').style.display = 'none', 3000);
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+const TAB_NAMES = ['notes','explain','quiz','progress'];
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tab')[TAB_NAMES.indexOf(name)].classList.add('active');
+  if (name === 'progress') renderProgress();
+}
+
+// ── Mode ───────────────────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('mode-' + m).classList.add('active');
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ── API calls ──────────────────────────────────────────────────────────────
+async function apiPost(path, body) {
+  const resp = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.detail || `HTTP ${resp.status}`);
+  }
+  return resp.json();
+}
+
+// ── Explain ────────────────────────────────────────────────────────────────
+async function askQuestion() {
+  const question = document.getElementById('explain-input').value.trim();
+  if (!question) return;
+
+  const btn = document.getElementById('explain-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Asking...';
+
+  const box     = document.getElementById('explain-response');
+  const content = document.getElementById('explain-content');
+  box.classList.add('visible');
+  content.innerHTML = '<span class="spinner"></span> Thinking...';
+
+  try {
+    const data = await apiPost('/api/explain', { question, notes, mode });
+    content.innerHTML = formatText(data.answer);
+  } catch (e) {
+    content.innerHTML = '';
+    showToast('Error: ' + e.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Ask →';
+}
+
+function formatText(t) {
+  return t
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code style="background:rgba(124,106,247,0.15);padding:2px 6px;border-radius:4px;font-family:Space Mono,monospace;font-size:12px;">$1</code>');
+}
+
+document.getElementById('explain-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') askQuestion();
+});
+
+// ── Quiz ───────────────────────────────────────────────────────────────────
+async function generateQuiz() {
+  const notesText = notes || SAMPLES.ml;
+  const count = parseInt(document.getElementById('q-count').value);
+  const difficulty = document.getElementById('q-diff').value;
+
+  const btn = document.getElementById('quiz-btn');
+  btn.disabled = true;
+  document.getElementById('quiz-loading').style.display = 'block';
+  document.getElementById('quiz-container').innerHTML = '';
+  document.getElementById('scoreboard').classList.remove('visible');
+
+  try {
+    quizData    = await apiPost('/api/quiz', { notes: notesText, count, difficulty });
+    userAnswers = {};
+    renderQuiz(quizData);
+  } catch (e) {
+    document.getElementById('quiz-container').innerHTML =
+      `<div class="empty"><div class="icon">⚠️</div><div>Failed to generate quiz: ${e.message}</div></div>`;
+  }
+
+  document.getElementById('quiz-loading').style.display = 'none';
+  btn.disabled = false;
+}
+
+function renderQuiz(data) {
+  const container = document.getElementById('quiz-container');
+  container.innerHTML = '';
+
+  data.questions.forEach((q, i) => {
+    const div = document.createElement('div');
+    div.className = 'quiz-q';
+
+    if (q.type === 'mcq') {
+      div.innerHTML = `
+        <div class="q-meta">Question ${i+1} of ${data.questions.length} · MCQ</div>
+        <div class="q-text">${q.question}</div>
+        <div class="options" id="opts-${i}">
+          ${q.options.map(opt =>
+            `<button class="opt" onclick="pickMCQ(${i},this,'${esc(opt)}','${esc(q.correct)}','${esc(q.explanation||'')}')">${opt}</button>`
+          ).join('')}
+        </div>
+        <div class="feedback" id="fb-${i}"></div>`;
+    } else {
+      div.innerHTML = `
+        <div class="q-meta">Question ${i+1} of ${data.questions.length} · Short Answer</div>
+        <div class="q-text">${q.question}</div>
+        <input class="short-input" id="sa-${i}" placeholder="Type your answer...">
+        <button class="btn btn-outline" style="font-size:12px;padding:8px 14px;" onclick="checkShort(${i},${JSON.stringify(q.keywords)},${JSON.stringify(q.model_answer)})">Check ✓</button>
+        <div class="feedback" id="fb-${i}"></div>`;
+    }
+
+    container.appendChild(div);
+  });
+
+  const finish = document.createElement('button');
+  finish.className = 'btn btn-primary';
+  finish.style.cssText = 'width:100%;margin-top:16px;';
+  finish.textContent = 'Finish & See Score 🏁';
+  finish.id = 'finish-btn';
+  finish.onclick = finishQuiz;
+  container.appendChild(finish);
+}
+
+function esc(s) { return (s||'').replace(/'/g,"\\'").replace(/"/g,'\\"'); }
+
+function pickMCQ(idx, btn, selected, correct, explanation) {
+  document.querySelectorAll(`#opts-${idx} .opt`).forEach(b => b.disabled = true);
+  const isCorrect = selected === correct;
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if (!isCorrect) {
+    document.querySelectorAll(`#opts-${idx} .opt`).forEach(b => {
+      if (b.textContent.trim() === correct.trim()) b.classList.add('correct');
+    });
+  }
+  document.getElementById(`fb-${idx}`).innerHTML =
+    `<span style="color:${isCorrect ? 'var(--correct)' : 'var(--wrong)'}">${isCorrect ? '✓ Correct!' : '✗ Incorrect.'}</span>` +
+    (explanation ? ` <span style="color:var(--text-dim)">${explanation}</span>` : '');
+  userAnswers[idx] = isCorrect;
+}
+
+function checkShort(idx, keywords, modelAnswer) {
+  const answer = (document.getElementById(`sa-${idx}`).value || '').toLowerCase();
+  if (!answer.trim()) return;
+  document.getElementById(`sa-${idx}`).disabled = true;
+  const matched = keywords.filter(k => answer.includes(k.toLowerCase()));
+  const isCorrect = matched.length / keywords.length >= 0.5;
+  document.getElementById(`fb-${idx}`).innerHTML =
+    `<span style="color:${isCorrect ? 'var(--correct)' : 'var(--wrong)'}">${isCorrect ? '✓ Good answer!' : '△ Needs more.'}</span>
+     <div style="margin-top:6px;color:var(--text-dim)">Model answer: ${modelAnswer}</div>`;
+  userAnswers[idx] = isCorrect;
+}
+
+function finishQuiz() {
+  const answered = Object.keys(userAnswers).length;
+  const correct  = Object.values(userAnswers).filter(Boolean).length;
+  const pct = answered ? Math.round((correct / answered) * 100) : 0;
+
+  progress.taken++;
+  progress.correct += correct;
+  progress.total   += answered;
+
+  const topic = quizData.topic || 'General';
+  if (!progress.topics[topic]) progress.topics[topic] = { correct: 0, total: 0 };
+  progress.topics[topic].correct += correct;
+  progress.topics[topic].total   += answered;
+
+  document.getElementById('score-display').textContent = `${correct}/${answered}`;
+  document.getElementById('score-sub').innerHTML =
+    `${pct >= 80 ? '🎉 Excellent!' : pct >= 60 ? '👍 Good job!' : '💪 Keep practicing!'} ` +
+    `<strong>${pct}%</strong> accuracy · Topic: ${topic}` +
+    (pct < 60 ? `<div style="margin-top:8px;color:var(--wrong);font-size:13px;">⚠️ Marked as weak area — review your notes!</div>` : '');
+
+  document.getElementById('scoreboard').classList.add('visible');
+  const fb = document.getElementById('finish-btn');
+  if (fb) fb.style.display = 'none';
+  document.getElementById('scoreboard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── Input tab switching (Type vs Upload) ──────────────────────────────────
+let currentInputTab = 'type';
+
+function switchInputTab(tab) {
+  currentInputTab = tab;
+  document.getElementById('input-tab-type').classList.toggle('active', tab === 'type');
+  document.getElementById('input-tab-upload').classList.toggle('active', tab === 'upload');
+  document.getElementById('input-panel-type').style.display   = tab === 'type'   ? 'block' : 'none';
+  document.getElementById('input-panel-upload').style.display = tab === 'upload' ? 'block' : 'none';
+}
+
+// ── PDF Upload ─────────────────────────────────────────────────────────────
+let pdfExtractedText = '';
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+  document.getElementById('drop-zone').classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadPdf(file);
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) uploadPdf(file);
+}
+
+async function uploadPdf(file) {
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
+    showToast('Please upload a PDF file.');
+    return;
+  }
+
+  // Show progress
+  document.getElementById('upload-progress').classList.add('visible');
+  document.getElementById('pdf-result').classList.remove('visible');
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const resp = await fetch('/api/upload-pdf', { method: 'POST', body: formData });
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      showToast(data.detail || 'Upload failed.');
+      return;
+    }
+
+    pdfExtractedText = data.text;
+
+    // Show result card
+    document.getElementById('pdf-result-name').textContent = data.filename;
+    document.getElementById('pdf-result-meta').textContent =
+      `${data.page_count} pages · ${data.char_count.toLocaleString()} characters extracted`;
+
+    const warning = document.getElementById('pdf-result-warning');
+    if (data.truncated) {
+      warning.textContent = '⚠️ PDF was large — first 8,000 characters used.';
+      warning.style.display = 'block';
+    } else {
+      warning.style.display = 'none';
+    }
+
+    document.getElementById('pdf-result').classList.add('visible');
+
+  } catch (e) {
+    showToast('Upload error: ' + e.message);
+  } finally {
+    document.getElementById('upload-progress').classList.remove('visible');
+    // Reset the file input so the same file can be re-uploaded if needed
+    document.getElementById('pdf-file-input').value = '';
+  }
+}
+
+function clearPdf() {
+  pdfExtractedText = '';
+  document.getElementById('pdf-result').classList.remove('visible');
+  document.getElementById('pdf-file-input').value = '';
+}
+
+function renderProgress() {
+  document.getElementById('s-total').textContent  = progress.taken;
+  document.getElementById('s-acc').textContent    = progress.total ? Math.round((progress.correct / progress.total) * 100) + '%' : '—';
+  document.getElementById('s-topics').textContent = Object.keys(progress.topics).length;
+
+  const list = document.getElementById('topic-list');
+  if (!Object.keys(progress.topics).length) {
+    list.innerHTML = `<div class="empty" style="padding:30px;"><div class="icon">📈</div><div>Take a quiz to see your progress here</div></div>`;
+    return;
+  }
+  list.innerHTML = Object.entries(progress.topics).map(([topic, d]) => {
+    const pct   = Math.round((d.correct / d.total) * 100);
+    const color = pct >= 75 ? 'var(--correct)' : pct >= 50 ? 'var(--accent)' : 'var(--wrong)';
+    return `
+      <div class="topic-row">
+        <div class="topic-name">${topic}</div>
+        ${pct < 50 ? '<span class="weak-tag">Weak</span>' : ''}
+        <div class="bar-bg"><div class="bar" style="width:${pct}%;background:${color};"></div></div>
+        <div class="topic-pct" style="color:${color}">${pct}%</div>
+      </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
